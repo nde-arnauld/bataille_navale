@@ -1,9 +1,11 @@
 from bateau import Bateau
+from constantes import *
+
 
 class Joueur:
     def __init__(self, nom: str):
         self.nom = nom
-        self.matrice = [[0 for _ in range(10)] for _ in range(10)]  # 0 = vide
+        self.matrice = [[CASE_VIDE for _ in range(10)] for _ in range(10)]  # 0 = vide
         self.bateaux = []
         self.tirs_effectues = []  # positions déjà tirées
 
@@ -21,7 +23,7 @@ class Joueur:
             positions = [(x + i, y) for i in range(bateau.taille)]
 
         # Vérifie que les cases sont libres
-        return all(self.matrice[xi][yi] == 0 for xi, yi in positions)
+        return all(self.matrice[xi][yi] == CASE_VIDE for xi, yi in positions)
 
     def placer_bateau(self, bateau: Bateau, debut: tuple):
         """Place un bateau automatiquement selon son orientation"""
@@ -31,18 +33,18 @@ class Joueur:
 
         bateau.placer(debut)
         for (x, y) in bateau.positions:
-            self.matrice[x][y] = 1
+            self.matrice[x][y] = CASE_BATEAU
         self.bateaux.append(bateau)
 
     def recevoir_tir(self, pos: tuple) -> str:
         """Reçoit un tir et renvoie le résultat ('raté', 'touché', 'coulé')"""
 
         x, y = pos
-        if self.matrice[x][y] == 0:
-            self.matrice[x][y] = 3  # raté
+        if self.matrice[x][y] == CASE_VIDE:
+            self.matrice[x][y] = CASE_TIR_RATE  # raté
             return "raté"
-        elif self.matrice[x][y] == 1:
-            self.matrice[x][y] = 2  # touché
+        elif self.matrice[x][y] == CASE_BATEAU:
+            self.matrice[x][y] = CASE_BATEAU_TOUCHE  # touché
             for bateau in self.bateaux:
                 if bateau.est_touchee(pos):
                     if bateau.est_coule():
@@ -58,7 +60,7 @@ class Joueur:
     def afficher_grille(self):
         """Affiche la grille du joueur avec les symboles simplifiés"""
 
-        symboles = {0: '_', 1: 'B', 2: 'X', 3: 'O'}
+        symboles = {CASE_VIDE: '_', CASE_BATEAU: 'B', CASE_BATEAU_TOUCHE: 'X', CASE_TIR_RATE: 'O'}
         print(f"\nGrille de {self.nom}:")
         for ligne in self.matrice:
             print(" ".join(symboles.get(x, '?') for x in ligne))
@@ -66,7 +68,7 @@ class Joueur:
     def afficher_grille_publique(self):
         """Affiche la grille visible par l’adversaire (cache les bateaux non touchés)"""
 
-        symboles = {0: '_', 1: '_', 2: 'X', 3: 'O'}
+        symboles = {CASE_VIDE: '_', CASE_BATEAU: '_', CASE_BATEAU_TOUCHE: 'X', CASE_TIR_RATE: 'O'}
         print(f"\nGrille vue par l’adversaire ({self.nom}):")
         for ligne in self.matrice:
             print(" ".join(symboles.get(x, '?') for x in ligne))

@@ -1,9 +1,9 @@
-from Partie import Partie
+from partie import Partie
 from bateau import Bateau
 from joueur import Joueur
 
 if __name__ == "__main__":
-    print("=== 🚢 Bataille Navale Locale ===")
+    print("=== Bataille Navale Locale ===")
 
     # Création des joueurs
     j1 = Joueur(input("Nom du joueur 1 : "))
@@ -22,8 +22,14 @@ if __name__ == "__main__":
                     print(f"\nPlacer le {nom} (taille {taille})")
                     x = int(input("Ligne de départ (0-9) : "))
                     y = int(input("Colonne de départ (0-9) : "))
+
                     orientation = input("Orientation (H/V) : ").upper()
+                    
+                    while orientation != "H" and orientation != "V":
+                        orientation = input("Orientation (H/V) : ").upper()
+
                     bateau = Bateau(nom, taille, orientation)
+
                     joueur.placer_bateau(bateau, (x, y))
                     joueur.afficher_grille()
                     break
