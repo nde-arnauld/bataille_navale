@@ -1,6 +1,6 @@
-from partie import Partie
-from bateau import Bateau
-from joueur import Joueur
+from base.partie import Partie
+from base.bateau import Bateau
+from base.joueur import Joueur
 
 if __name__ == "__main__":
     print("=== Bataille Navale Locale ===")
@@ -10,7 +10,8 @@ if __name__ == "__main__":
     j2 = Joueur(input("Nom du joueur 2 : "))
 
     # Liste de bateaux à placer
-    flotte = [("Porte-avions", 4), ("Croiseur", 3), ("Sous-marin", 2)]
+    # flotte = [("Porte-avions", 4), ("Croiseur", 3), ("Sous-marin", 2)]
+    flotte = [("Porte-avions", 4)]
 
     # Placement manuel pour chaque joueur
     for joueur in [j1, j2]:
@@ -55,5 +56,5 @@ if __name__ == "__main__":
             print(f"Erreur de tir : {e}")
 
         # Afficher les grilles à chaque tour
-        joueur.afficher_grille()
-        adversaire.afficher_grille()
+        joueur.afficher_grille_publique()
+        adversaire.afficher_grille_publique()
