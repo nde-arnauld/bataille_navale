@@ -3,10 +3,22 @@
     <words>
       <w>abandonnee</w>
       <w>coords</w>
+      <w>deconnecte</w>
+      <w>deconnexion</w>
       <w>defaut</w>
+      <w>desenregistrer</w>
+      <w>désenregistre</w>
+      <w>désenregistré</w>
+      <w>ecouteur</w>
+      <w>etat</w>
+      <w>gagnees</w>
+      <w>hashs</w>
+      <w>jouees</w>
       <w>reponse</w>
       <w>resultat</w>
+      <w>sauvegardee</w>
       <w>terminee</w>
+      <w>touchees</w>
     </words>
   </dictionary>
 </component>
