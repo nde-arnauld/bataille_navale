@@ -65,7 +65,11 @@ class EcouteurServeur(threading.Thread):
                     # Dans sa méthode _initialiser_session après avoir reçu le nom.
                     # Cependant, nous avons besoin d'une fonction pour qu'il s'enregistre et se désenregistre.
 
-                    gestionnaire.set_callbacks(self.enregistrer_client, self.desenregistrer_client)
+                    gestionnaire.set_callbacks(
+                        self.enregistrer_client,
+                        self.desenregistrer_client,
+                        self.get_clients_map
+                    )
                     self.clients_actifs.append(gestionnaire)
                     gestionnaire.start()
 
@@ -87,6 +91,10 @@ class EcouteurServeur(threading.Thread):
             if self.socket_tcp:
                 self.socket_tcp.close()
             print("TCP Écouteur Serveur: Arrêté.")
+
+    def get_clients_map(self) -> dict:
+        """ Retourne la map actuelle des GestionnaireClient actifs. """
+        return self.clients_connectes_map
 
     def enregistrer_client(self, nom_joueur: str, client_instance: 'GestionnaireClient') -> None:
         with self.map_lock:

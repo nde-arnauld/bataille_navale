@@ -122,8 +122,13 @@ class Message:
         return Message(MSG_PLACEMENT_OK, {})
 
     @staticmethod
-    def creer_debut_partie():
-        return Message(MSG_DEBUT_PARTIE, {})
+    def creer_debut_partie(nom_joueur: str=None, mode: str=None):
+        donnees = {}
+        if nom_joueur:
+            donnees["adversaire"] = nom_joueur
+        if mode:
+            donnees["mode"] = mode
+        return Message(MSG_DEBUT_PARTIE, donnees)
 
     @staticmethod
     def creer_message_reprise(msg_reprise_data: dict[str, Any]):

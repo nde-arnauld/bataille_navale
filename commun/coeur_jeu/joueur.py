@@ -199,7 +199,7 @@ class Joueur:
                 orientation = random.choice([const.HORIZONTAL, const.VERTICAL])
 
                 if self.placer_navire(navire, x, y, orientation):
-                    print(f"Navire {self.nom} : x = {x}, y = {y}")
+                    print(f"Navire {self.nom} : x = {x}, y = {y}, orientation = {orientation}")
                     place = True
 
                 tentatives += 1
@@ -270,7 +270,7 @@ class Joueur:
             O : tir raté (case déjà visée, sans navire).
         """
 
-        print(f"\n=== Grille de {self.nom} ===")
+        print(f"\n--- GRILLE DE {self.nom.upper()} ---\n")
         print("   ", end="")
         for i in range(const.TAILLE_GRILLE):
             print(f" {i} ", end="")
@@ -299,7 +299,7 @@ class Joueur:
             X : navire touché
             O : tir raté (case déjà visée, sans navire).
         """
-        print(f"\n=== Tirs de {self.nom} ===")
+        print("\n--- GRILLE DE SUIVI (TIRS ADVERSES) ---\n")
         print("   ", end="")
         for i in range(const.TAILLE_GRILLE):
             print(f" {i} ", end="")
@@ -367,7 +367,7 @@ class Joueur:
         Cette méthode affiche pour chaque navire son nom, sa taille et son état courant
         (nombre de cases touchées sur la taille totale ou 'coulé' si le navire est complètement détruit).
         """
-        print(f"\n=== Navires de {self.nom} ===")
+        print(f"\n--- Navires de {self.nom} ---")
         for navire in self.navires:
             print(f"  {navire}")
 
@@ -386,11 +386,9 @@ class Joueur:
         print("-" * 40)
 
         # 1. Affichage de la grille principale (ses propres navires)
-        print("\n--- GRILLE PRINCIPALE (MES NAVIRES) ---")
-        self.afficher_grille(afficher_navires=True)
+        self.afficher_grille()
 
         # 2. Affichage de la grille de suivi (ses tirs sur l'adversaire)
-        print("\n--- GRILLE DE SUIVI (TIRS ADVERSES) ---")
         self.afficher_grille_suivi()
 
         # 3. Affichage de l'état détaillé des navires

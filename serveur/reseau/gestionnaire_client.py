@@ -1,6 +1,7 @@
 import logging
 import socket
 import threading
+import time
 from typing import Any
 
 from commun import constantes as const
@@ -77,6 +78,7 @@ class GestionnaireClient(threading.Thread):
         self.nom_joueur = msg_connexion.donnees.get("nom", "Inconnu")
         print(f"[{self.nom_joueur}] Connexion TCP établie.")
 
+        # La callback_enregistrer() est paramétrée dans EcouteurServeur
         if self.callback_enregistrer and self.nom_joueur:
             self.callback_enregistrer(self.nom_joueur, self)
 
@@ -158,14 +160,15 @@ class GestionnaireClient(threading.Thread):
 
             else:
                 # Échec du chargement (ne devrait pas arriver si partie_existe a dit oui)
-                Protocole.envoyer_message(self.socket_client, Message(const.MSG_ERREUR, {"detail": "Échec chargement"}),
-                                          const.SERVEUR)
+                Protocole.envoyer_message(self.socket_client, Message(const.MSG_ERREUR, {"detail": "Échec chargement"}), const.SERVEUR)
                 return False
 
         elif msg_choix.type == const.MSG_NOUVELLE_PARTIE:
             # Supprimer l'ancienne sauvegarde
             self.gestionnaire_utilisateurs.supprimer_partie_sauvegardee(self.nom_joueur)
             Protocole.envoyer_message(self.socket_client, Message.creer_connexion_ok("Nouvelle partie démarrée."), const.SERVEUR)
+            time.sleep(0.1) # un peu d'attente
+            Protocole.envoyer_message(self.socket_client, Message(const.MSG_NOUVELLE_PARTIE), const.SERVEUR)
             return True
 
         return False
@@ -219,6 +222,7 @@ class GestionnaireClient(threading.Thread):
         elif mode == const.MODE_VS_JOUEUR:
             # Logique PvP
             self.est_en_attente_pvp = True
+            self.gestionnaire_partie.mettre_en_attente(self)
             self._envoyer_message_tcp(Message(const.MSG_ATTENTE_ADVERSAIRE))
 
 
@@ -234,20 +238,38 @@ class GestionnaireClient(threading.Thread):
             # 1. Placement des navires du joueur (client)
             self.joueur_local.placer_navires_depuis_positions(positions)
 
-            # 2. Placement des navires de l'IA (Joueur 2)
-            joueur_ia = self.partie_en_cours.joueur2
-            if joueur_ia:
-                joueur_ia.placer_navires_aleatoire()
+            if self.mode_jeu == const.MODE_VS_SERVEUR:
+                # 2. Placement des navires de l'IA (Joueur 2)
+                joueur_ia = self.partie_en_cours.joueur2
+                if joueur_ia:
+                    joueur_ia.placer_navires_aleatoire()
 
-            # 3. Démarrer la partie
-            self.partie_en_cours.demarrer()
+                # 3. Démarrer la partie
+                self.partie_en_cours.demarrer()
 
-            # 4. Confirmation au client
-            self._envoyer_message_tcp(Message(const.MSG_PLACEMENT_OK))
-            print(f"[GestionnaireClient: {self.nom_joueur}] Placement validé, partie Solo lancée.")
+                # 4. Confirmation au client
+                self._envoyer_message_tcp(Message(const.MSG_PLACEMENT_OK))
+                print(f"[GestionnaireClient: {self.nom_joueur}] Placement validé, partie Solo lancée.")
 
-            # 5. Lancer le premier tour
-            self._lancer_tour_initial()
+                # 5. Lancer le premier tour
+                self._lancer_tour_initial()
+            elif self.mode_jeu == const.MODE_VS_JOUEUR:
+                # --- MODE PvP (Logique déléguée) ---
+
+                # La Partie n'est PAS démarrée ici, car elle est en attente de l'adversaire.
+                #
+                # On stocke l'état du placement local du client (déjà fait par placer_navires_depuis_positions)
+                # et on notifie le GestionnairePartie que ce client est PRÊT.
+
+                self._envoyer_message_tcp(Message(const.MSG_PLACEMENT_OK))
+                print(f"[{self.nom_joueur}] Placement PvP validé. En attente de l'adversaire...")
+
+                # Notifier le GestionnairePartie que le client est prêt
+                self.gestionnaire_partie.notifier_client_pret(self, self.callback_get_map())
+
+            else:
+                # Mode non géré ou indéfini (Erreur)
+                self._envoyer_message_tcp(Message.creer_erreur("Mode de jeu non spécifié."))
 
         except Exception as e:
             # Si le placement échoue (coordonnées invalides, etc.)
@@ -259,10 +281,8 @@ class GestionnaireClient(threading.Thread):
         """ Détermine le premier tour et notifie le client. """
         # La partie en cours doit avoir une logique pour déterminer qui commence
         if self.partie_en_cours.est_tour_joueur1:  # joueur1 est le client
-            print("GestionnaireClient: Tour joueur1")
             self.notifier_tour(True)  # C'est le tour du client
         else:
-            print("GestionnaireClient: Tour serveurIA")
             self.notifier_tour(False)  # C'est le tour de l'IA
             # Si c'est le tour de l'IA, on exécute son action immédiatement
             self._executer_tour_ia()
@@ -291,7 +311,7 @@ class GestionnaireClient(threading.Thread):
 
         if partie_terminee:
             # L'IA a gagné!
-            self._envoyer_message_tcp(Message.creer_fin_partie(joueur_ia.nom, "L'IA vous a coulé!"))
+            self._envoyer_message_tcp(Message.creer_fin_partie(joueur_ia.nom, " vous a coulé!"))
             self.stop()
             return
 
@@ -316,15 +336,18 @@ class GestionnaireClient(threading.Thread):
 
         return 0, 0
 
+    def notifier_erreur(self, texte: str):
+        msg_erreur = Message.creer_erreur(texte)
+        self._envoyer_message_tcp(msg_erreur)
+
+    def notifier_debut_partie(self, nom_adversaire: str, mode: str):
+        msg_erreur = Message.creer_debut_partie(nom_adversaire, mode)
+        self._envoyer_message_tcp(msg_erreur)
+
     def notifier_match_trouve(self, nom_adversaire: str):
         """ Notifie le client qu'un match a été trouvé. """
         msg_adv = Message.creer_adversaire_trouve(nom_adversaire)
         self._envoyer_message_tcp(msg_adv)
-
-        # Envoie le message de début de placement
-        self._envoyer_message_tcp(Message.creer_placement_navires([]))  # Pour initier la phase côté client
-
-        # NOTE : Le client doit ensuite renvoyer les positions via MSG_PLACEMENT_BATEAUX
 
     def notifier_tir_recu(self, x: int, y: int, resultat: str, tireur: str, navire_coule: str | None):
         """ Notifie le client qu'il a reçu un tir. """
@@ -334,6 +357,10 @@ class GestionnaireClient(threading.Thread):
     def notifier_resultat_tir(self, x: int, y: int, resultat: str, navire_coule: str | None):
         """ Notifie le client du résultat de son propre tir. """
         msg = Message.creer_reponse_tir(resultat, x, y, navire_coule)
+        self._envoyer_message_tcp(msg)
+
+    def notifier_fin_partie(self, status: str, message: str):
+        msg = Message(const.MSG_FIN_PARTIE, {"status": status, "message": message})
         self._envoyer_message_tcp(msg)
 
     def notifier_tour(self, est_son_tour: bool):
@@ -352,16 +379,19 @@ class GestionnaireClient(threading.Thread):
 
     def _traiter_tir_client(self, x: int, y: int) -> None:
         """ Gère une commande de tir du client, en déléguant selon le mode de jeu. """
+        print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: DEDANS")
 
-        if not self.partie_en_cours or self.mode_jeu is None or not self.partie_en_cours.est_tour_joueur1:
+        if not self.partie_en_cours or self.mode_jeu is None:
+            print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: "
+                  f"ERREUR (partie_en_cours: {self.partie_en_cours}, mode_jeu: {self.mode_jeu}, est_tour_joueur1: {self.partie_en_cours.est_tour_joueur1})")
             # Non, ce n'est pas le tour (ou la partie n'est pas initialisée).
-            self._envoyer_message_tcp(
-                Message(const.MSG_ERREUR, {"detail": "Ce n'est pas votre tour ou partie non démarrée."}))
+            self._envoyer_message_tcp(Message(const.MSG_ERREUR, {"detail": "Ce n'est pas votre tour ou partie non démarrée."}))
             return
 
         # Si nous sommes ici, c'est le tour du joueur et la partie est en cours.
 
         if self.mode_jeu == const.MODE_VS_SERVEUR:
+            print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: MODE_VS_SERVEUR")
             # LOGIQUE SOLO : Gérée par le thread local du client
 
             # Note: Si votre Partie.traiter_tir ne gère pas de 'partie_terminee', il faudra l'ajouter.
@@ -370,13 +400,14 @@ class GestionnaireClient(threading.Thread):
             self.notifier_resultat_tir(x, y, resultat, navire_coule)
 
             if partie_terminee:
-                self._envoyer_message_tcp(Message.creer_fin_partie(self.nom_joueur, "Victoire sur l'IA!"))
+                self._envoyer_message_tcp(Message.creer_fin_partie(self.nom_joueur, " Félicitations vous avez gagné!"))
                 # self.stop()
                 return
 
             self._executer_tour_ia()
 
         elif self.mode_jeu == const.MODE_VS_JOUEUR:
+            print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: MODE_VS_JOUEUR")
             # LOGIQUE PvP : Délégation au GestionnairePartie
 
             if self.callback_get_map is None:
@@ -384,6 +415,8 @@ class GestionnaireClient(threading.Thread):
                 return
 
             clients_actifs_map = self.callback_get_map()
+
+            print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: {self.nom_joueur}")
 
             # Délégation de la tâche à la logique centrale (GestionnairePartie)
             self.gestionnaire_partie.traiter_tir(
@@ -394,13 +427,18 @@ class GestionnaireClient(threading.Thread):
             )
 
         else:
+            print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: MODE INCONNU")
             self._envoyer_message_tcp(Message.creer_erreur("Mode de jeu inconnu."))
 
     def _transmettre_chat(self, message: str) -> None:
         """ Envoie le message de chat à l'adversaire (via GestionnairePartie) ou le journal local. """
         print(f"[CHAT {self.nom_joueur}] {message}")
-
-        # Logique PvP: GESTIONNAIRE_PARTIE.transmettre_chat (self.nom_joueur, message)
+        clients_actifs_map = self.callback_get_map()
+        self.gestionnaire_partie.transmettre_chat(
+            envoyeur_client=self,
+            message=message,
+            clients_actifs_map=clients_actifs_map,
+        )
 
     def _traiter_deconnexion_sauvegarde(self, type_message: str) -> None:
         """ Gère la déconnexion, l'abandon ou la sauvegarde. """

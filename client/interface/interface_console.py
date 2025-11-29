@@ -116,7 +116,7 @@ class InterfaceConsole:
             input("Appuyez sur Entrée pour revenir au menu...")
             return
 
-        self.statut_connexion = const.STATUS_CONNECTE  
+        self.statut_connexion = const.STATUS_CONNECTE
         print("[CONNEXION] Connexion au serveur de jeu réussie.")
 
     def main_loop(self):
@@ -138,19 +138,18 @@ class InterfaceConsole:
 
                 if self.etat_actuel == ETAT_LOCAL_JEU:
                     self._afficher_jeu()
+                    # C'est à nous de jouer
                     if self.est_mon_tour:
                         self.saisir_tir_ou_chat()
-                    else:
+                    else: # Tour de l'adversaire
                         self.saisir_chat()
 
                 elif self.etat_actuel == ETAT_LOCAL_PLACEMENT:
                     pass
 
                 elif self.etat_actuel == ETAT_LOCAL_ATTENTE:
-                    self._afficher_jeu()
-                    print(
-                        f"\n[JEU] En attente d'un adversaire... Tapez '{const.CMD_ABANDONNER}' pour annuler l'attente.")
-                    self.saisir_chat()
+                    pass
+
 
                 time.sleep(0.1)
         except Exception as e:
@@ -202,6 +201,7 @@ class InterfaceConsole:
 
             if choix == const.CHOIX_MODE_SOLO:  
                 self.mode_jeu = const.MODE_VS_SERVEUR
+                self.adversaire_nom = const.NOM_SERVEUR
                 self.connecteur.envoyer_commande(Message.creer_choix_mode(const.MODE_VS_SERVEUR))
                 self.etat_actuel = ETAT_LOCAL_PLACEMENT # En attente de réponse, les messages reçus sont ignorés
                 break
@@ -430,6 +430,9 @@ class InterfaceConsole:
                 if nom_adversaire == const.NOM_SERVEUR:
                     print("Appuyez pour continuer ...")
 
+        elif message.type == const.MSG_NOUVELLE_PARTIE:
+            self._menu_choix_mode()
+
         elif message.type == const.MSG_ATTENTE_ADVERSAIRE:
             print("\n[JEU] En attente d'un adversaire...")
             self.etat_actuel = ETAT_LOCAL_ATTENTE
@@ -437,6 +440,7 @@ class InterfaceConsole:
         elif message.type == const.MSG_ADVERSAIRE_TROUVE:
             self.adversaire_nom = message.obtenir_donnee("adversaire")
             print(f"\n[JEU] Adversaire trouvé: {self.adversaire_nom}. Préparez le placement!")
+            print("Appuyez pour continuer ...")
             self.gerer_placement_navires()
             self.etat_actuel = ETAT_LOCAL_PLACEMENT
 
@@ -446,11 +450,11 @@ class InterfaceConsole:
 
         elif message.type == const.MSG_VOTRE_TOUR:
             self.est_mon_tour = True
-            print("\n<<< C'EST VOTRE TOUR >>>")
+            print("\n<<< C'est votre tour. >>>")
 
         elif message.type == const.MSG_TOUR_ADVERSAIRE:
             self.est_mon_tour = False
-            print("\n<<< Tour de l'adversaire >>>")
+            print("\n<<< Tour de l'adversaire. >>>")
 
         elif message.type == const.MSG_REPONSE_TIR:
             resultat = message.obtenir_donnee("resultat")
@@ -487,11 +491,19 @@ class InterfaceConsole:
             print(f"\n[CHAT - {envoyeur}] {msg}")
 
         elif message.type == const.MSG_FIN_PARTIE:
-            gagnant = message.obtenir_donnee("gagnant")
+            status = message.obtenir_donnee("status") # mode pvp
+            nom_gagnant = message.obtenir_donnee("gagnant") # mode solo
             detail = message.obtenir_donnee("message")
-            print(f"\n!!! FIN DE PARTIE !!!")
-            print(f"GAGNANT: {gagnant}. Raison: {detail}")
-            self.connecteur.deconnecter()
+            print(f"\n### FIN DE PARTIE ###")
+            if status:
+                print(f"{status}", end='')
+            if nom_gagnant:
+                print(f"{nom_gagnant}", end='')
+
+            print(f"{detail}")
+            # Afin de ne pas se déconnecter après la fin d'une partie
+            # self.etat_actuel = ETAT_LOCAL_CHOIX_MODE
+            # self._menu_choix_mode()
 
         elif message.type == const.MSG_ERREUR:
             print(f"\n[ERREUR SERVEUR] {message.obtenir_donnee('message')}")
@@ -511,17 +523,7 @@ class InterfaceConsole:
 
         print("=" * 70)
         print(f"JEU ACTIF | Joueur: {self.joueur_local.nom} | Adversaire: {self.adversaire_nom or 'Attente...'}")
-        print(
-            f"Mode: {self.mode_jeu} | État: {self.etat_actuel} | Tour: {'VOUS' if self.est_mon_tour else 'Adversaire'}")
+        print(f"Mode: {self.mode_jeu} | État: {self.etat_actuel} | Tour: {'VOUS' if self.est_mon_tour else 'Adversaire'}")
         print("-" * 70)
 
-        # Affichage de la Grille Principale (Mes navires)
-        print("\n--- MA GRILLE (Navires) ---")
-        self.joueur_local.afficher_grille(afficher_navires=True)
-
-        # Affichage de la Grille de Suivi (Mes tirs)
-        print("\n--- GRILLE DE SUIVI (Tirs effectués) ---")
-        self.joueur_local.afficher_grille_suivi()
-
-        # Afficher l'état des navires
-        self.joueur_local.afficher_navires()
+        self.joueur_local.afficher_etat_complet()
