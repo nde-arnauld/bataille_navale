@@ -379,7 +379,6 @@ class GestionnaireClient(threading.Thread):
 
     def _traiter_tir_client(self, x: int, y: int) -> None:
         """ Gère une commande de tir du client, en déléguant selon le mode de jeu. """
-        print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: DEDANS")
 
         if not self.partie_en_cours or self.mode_jeu is None:
             print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: "
@@ -391,7 +390,6 @@ class GestionnaireClient(threading.Thread):
         # Si nous sommes ici, c'est le tour du joueur et la partie est en cours.
 
         if self.mode_jeu == const.MODE_VS_SERVEUR:
-            print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: MODE_VS_SERVEUR")
             # LOGIQUE SOLO : Gérée par le thread local du client
 
             # Note: Si votre Partie.traiter_tir ne gère pas de 'partie_terminee', il faudra l'ajouter.
@@ -407,7 +405,6 @@ class GestionnaireClient(threading.Thread):
             self._executer_tour_ia()
 
         elif self.mode_jeu == const.MODE_VS_JOUEUR:
-            print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: MODE_VS_JOUEUR")
             # LOGIQUE PvP : Délégation au GestionnairePartie
 
             if self.callback_get_map is None:
@@ -415,8 +412,6 @@ class GestionnaireClient(threading.Thread):
                 return
 
             clients_actifs_map = self.callback_get_map()
-
-            print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: {self.nom_joueur}")
 
             # Délégation de la tâche à la logique centrale (GestionnairePartie)
             self.gestionnaire_partie.traiter_tir(
@@ -427,7 +422,6 @@ class GestionnaireClient(threading.Thread):
             )
 
         else:
-            print(f"[GESTIONNAIRE CLIENT (traiter_tir_client)]: MODE INCONNU")
             self._envoyer_message_tcp(Message.creer_erreur("Mode de jeu inconnu."))
 
     def _transmettre_chat(self, message: str) -> None:

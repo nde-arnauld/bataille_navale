@@ -102,7 +102,6 @@ class GestionnairePartie:
         # Après le placement (géré par les clients), la partie sera formellement démarrée
         # et le premier tour sera notifié.
 
-
     def notifier_client_pret(self, client_pret: 'GestionnaireClient', client_actif_map: dict) -> None:
         """
         Marque un client comme prêt (navires placés) et vérifie si l'adversaire l'est aussi.
@@ -164,7 +163,6 @@ class GestionnairePartie:
         else:
             client_joueur1.notifier_tour(False)
             client_joueur2.notifier_tour(True)
-
 
     @staticmethod
     def trouver_gestionnaire_client(nom_joueur: str, clients_actifs_map: dict) -> 'GestionnaireClient|None':

@@ -14,6 +14,7 @@ ETAT_LOCAL_DECONNECTE = "DECONNECTE"
 ETAT_LOCAL_CHOIX_MODE = "CHOIX_MODE"
 ETAT_LOCAL_PLACEMENT = "PLACEMENT"
 ETAT_LOCAL_JEU = "JEU_EN_COURS"
+ETAT_LOCAL_JEU_TERMINE = "JEU_TERMINE"
 ETAT_LOCAL_ATTENTE = "ATTENTE_ADVERSAIRE"
 ETAT_LOCAL_REPRISE = "CHOIX_REPRISE"
 
@@ -466,6 +467,7 @@ class InterfaceConsole:
                 print(f"\n[RÉSULTAT] Tir en ({x},{y}): {resultat}!")
                 if resultat == const.TIR_COULE:
                     print(f"  -> Navire coulé: {message.obtenir_donnee('bateau_coule')}")
+                    self.etat_actuel = ETAT_LOCAL_JEU_TERMINE
 
             else:  # Tir adverse reçu
                 print(f"\n[ADVERSE] Tir reçu en ({x},{y}). Résultat: {resultat}!")
